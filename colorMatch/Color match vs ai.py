@@ -3,7 +3,7 @@ import random
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QPushButton,
     QLabel, QGridLayout, QVBoxLayout,
-    QHBoxLayout, QComboBox
+    QHBoxLayout, QComboBox, QMessageBox, QFrame
 )
 from PyQt6.QtCore import QTimer
 
@@ -123,6 +123,9 @@ class GameManager:
     def handleCardSelection(self, index):
         if self.currentTurn != "Player":
             return
+        
+        if len(self.selectedCards) >= 2:
+            return
 
         card = self.cards[index]
 
@@ -130,7 +133,6 @@ class GameManager:
             return
 
         self.revealCard(index)
-
         self.selectedCards.append(index)
 
         if len(self.selectedCards) == 2:
@@ -230,11 +232,11 @@ class GameManager:
 
         if total == 32:
             if self.playerScore > self.aiScore:
-                self.window.turnLabel.setText("Player Wins!")
+                QMessageBox.information(self.window, "Game Over!", "This Round Player Wins!")
             elif self.aiScore > self.playerScore:
-                self.window.turnLabel.setText("AI Wins!")
+                QMessageBox.information(self.window, "Game Over!", "This Round AI Wins!")
             else:
-                self.window.turnLabel.setText("Draw Game!")
+                QMessageBox.information(self.window, "Game Over!", "This Round is a Draw!")
 
 
 # Main Window
@@ -250,24 +252,33 @@ class MainWindow(QWidget):
         mainLayout = QVBoxLayout()
         topLayout = QHBoxLayout()
 
-        self.playerLabel = QLabel("Player: 0")
-        self.aiLabel = QLabel("AI: 0")
+        self.scoreboardLabel = QLabel("Player: 0   |   AI: 0")
         self.turnLabel = QLabel("Player Turn")
         self.difficultyLabel = QLabel("AI Current Difficulty:")
+
+        self.turnLabel.setStyleSheet("font-size: 16px; font-weight: bold;")
+        self.scoreboardLabel.setStyleSheet("font-size: 16px; font-weight: bold;")
+        self.difficultyLabel.setStyleSheet("font-size: 16px; font-weight: bold;")
 
         self.difficultyBox = QComboBox()
         self.difficultyBox.addItems(["easy", "medium", "hard"])
         self.difficultyBox.setCurrentText(self.game.ai.difficulty)
         self.difficultyBox.currentTextChanged.connect(self.difficultyChanged)
+        self.difficultyBox.setStyleSheet("font-size: 16px; font-weight: bold;")
 
-        topLayout.addWidget(self.playerLabel)
-        topLayout.addWidget(self.aiLabel)
+        topLayout.addWidget(self.scoreboardLabel)
+        topLayout.addStretch()
         topLayout.addWidget(self.turnLabel)
+        topLayout.addStretch()
         topLayout.addWidget(self.difficultyLabel)
         topLayout.addWidget(self.difficultyBox)
 
-        mainLayout.addLayout(topLayout)
-
+        topFrame = QFrame()
+        topFrame.setLayout(topLayout)
+        topFrame.setFrameShape(QFrame.Shape.StyledPanel)
+        topFrame.setStyleSheet("background-color: #363332; padding: 10px; border-radius: 5px;")
+        mainLayout.addWidget(topFrame)
+        
         self.gridLayout = QGridLayout()
         self.buttons = []
         self.createBoardUI()
@@ -307,12 +318,8 @@ class MainWindow(QWidget):
             self.gridLayout.addWidget(button, row, col)
 
     def updateScores(self):
-        self.playerLabel.setText(
-            f"Player: {self.game.playerScore}"
-        )
-
-        self.aiLabel.setText(
-            f"AI: {self.game.aiScore}"
+        self.scoreboardLabel.setText(
+            f"Player: {self.game.playerScore} | AI: {self.game.aiScore}"
         )
 
     def updateTurnDisplay(self):
