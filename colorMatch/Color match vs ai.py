@@ -3,7 +3,7 @@ import random
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QPushButton,
     QLabel, QGridLayout, QVBoxLayout,
-    QHBoxLayout
+    QHBoxLayout, QComboBox
 )
 from PyQt6.QtCore import QTimer
 
@@ -27,6 +27,42 @@ class Card:
 
 # Ai class
 class AIPlayer:
+    def __init__(self, difficulty="easy"):
+        self.memory = {}
+        self.difficulty = difficulty
+
+    def rememberCard(self, index, color):
+        self.memory[index] = color
+
+    def findKnownCards(self):
+        seen = {}
+
+        for index, color in self.memory.items():
+            if color in seen:
+                return seen[color], index
+            else:
+                seen[color] = index
+        
+        return None, None
+    
+    def chooseCard(self, cards):
+        if self.difficulty == "easy":
+            return self.selectRandomCards(cards)
+        elif self.difficulty == "medium":
+            index1, index2 = self.findKnownCards()
+
+            if index1 is not None and random.random() < 0.5:
+                return index1, index2
+            
+            return self.selectRandomCards(cards)
+        elif self.difficulty == "hard":
+            index1, index2 = self.findKnownCards()
+
+            if index1 is not None:
+                return index1, index2
+            
+            return self.selectRandomCards(cards)
+
     def selectRandomCards(self, cards):
         available = []
 
@@ -37,7 +73,7 @@ class AIPlayer:
         return random.sample(available, 2)
 
     def makeMove(self, game):
-        index1, index2 = self.selectRandomCards(game.cards)
+        index1, index2 = self.chooseCard(game.cards)
 
         game.revealCard(index1)
         game.revealCard(index2)
@@ -105,6 +141,8 @@ class GameManager:
 
         card.reveal()
 
+        self.ai.rememberCard(index, card.color)
+
         self.window.buttons[index].setStyleSheet(
             f"background-color: {card.color};"
         )
@@ -132,6 +170,9 @@ class GameManager:
             card1.markMatched()
             card2.markMatched()
 
+            self.ai.memory.pop(index1, None)
+            self.ai.memory.pop(index2, None)
+
             self.window.buttons[index1].setStyleSheet(
                 f"background-color: {card1.color};"
             )
@@ -147,13 +188,14 @@ class GameManager:
 
             self.window.updateScores()
 
+            if turn == "AI" and (self.playerScore + self.aiScore) < 32:    
+                QTimer.singleShot(1000, lambda: self.ai.makeMove(self))
+
         else:
             self.hideCards(index1, index2)
-
             self.switchTurn()
 
         self.selectedCards = []
-
         self.checkWinner()
 
     def switchTurn(self):
@@ -201,30 +243,33 @@ class MainWindow(QWidget):
         super().__init__()
 
         self.setWindowTitle("Color Match Game")
-
         self.game = GameManager(self)
-
         self.setupUI()
 
     def setupUI(self):
         mainLayout = QVBoxLayout()
-
         topLayout = QHBoxLayout()
 
-        self.playerLabel = QLabel("Player Score: 0")
-        self.aiLabel = QLabel("AI Score: 0")
+        self.playerLabel = QLabel("Player: 0")
+        self.aiLabel = QLabel("AI: 0")
         self.turnLabel = QLabel("Player Turn")
+        self.difficultyLabel = QLabel("AI Current Difficulty:")
+
+        self.difficultyBox = QComboBox()
+        self.difficultyBox.addItems(["easy", "medium", "hard"])
+        self.difficultyBox.setCurrentText(self.game.ai.difficulty)
+        self.difficultyBox.currentTextChanged.connect(self.difficultyChanged)
 
         topLayout.addWidget(self.playerLabel)
         topLayout.addWidget(self.aiLabel)
         topLayout.addWidget(self.turnLabel)
+        topLayout.addWidget(self.difficultyLabel)
+        topLayout.addWidget(self.difficultyBox)
 
         mainLayout.addLayout(topLayout)
 
         self.gridLayout = QGridLayout()
-
         self.buttons = []
-
         self.createBoardUI()
 
         mainLayout.addLayout(self.gridLayout)
@@ -277,6 +322,10 @@ class MainWindow(QWidget):
 
     def restartClicked(self):
         self.game.restartGame()
+
+    def difficultyChanged(self, newDifficulty):
+        self.game.ai.difficulty = newDifficulty
+        print(f"AI difficulty changed to: {newDifficulty}")
 
     def resetBoard(self):
         for button in self.buttons:
