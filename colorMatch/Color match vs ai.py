@@ -227,6 +227,16 @@ class GameManager:
 
         self.window.updateTurnDisplay()
 
+    def endGame(self):
+        if self.playerScore > self.aiScore:
+            QMessageBox.information(self.window, "Game Over!", "This Round Player Wins!")
+        elif self.aiScore > self.playerScore:
+            QMessageBox.information(self.window, "Game Over!", "This Round AI Wins!")
+        elif self.playerScore == self.aiScore:
+            QMessageBox.information(self.window, "Game Over!", "This Round is a Draw!")
+
+        self.restartGame()
+
     def checkWinner(self):
         total = self.playerScore + self.aiScore
 
@@ -252,7 +262,7 @@ class MainWindow(QWidget):
         mainLayout = QVBoxLayout()
         topLayout = QHBoxLayout()
 
-        self.scoreboardLabel = QLabel("Player: 0   |   AI: 0")
+        self.scoreboardLabel = QLabel("Player:  0   |   AI:  0")
         self.turnLabel = QLabel("Player Turn")
         self.difficultyLabel = QLabel("AI Current Difficulty:")
 
@@ -264,7 +274,7 @@ class MainWindow(QWidget):
         self.difficultyBox.addItems(["easy", "medium", "hard"])
         self.difficultyBox.setCurrentText(self.game.ai.difficulty)
         self.difficultyBox.currentTextChanged.connect(self.difficultyChanged)
-        self.difficultyBox.setStyleSheet("font-size: 16px; font-weight: bold;")
+        self.difficultyBox.setStyleSheet("font-size: 14px; font-weight: bold;")
 
         topLayout.addWidget(self.scoreboardLabel)
         topLayout.addStretch()
@@ -286,12 +296,34 @@ class MainWindow(QWidget):
         mainLayout.addLayout(self.gridLayout)
 
         restartButton = QPushButton("Restart")
+        endButton = QPushButton("End Game")
 
-        restartButton.clicked.connect(
-            self.restartClicked
-        )
+        buttonStyle = """
+        QPushButton {
+            background-color: #363332;
+            border: none;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        QPushButton:hover {
+            background-color: #252322;
+        }
+        """
+        restartButton.setStyleSheet(buttonStyle)
+        endButton.setStyleSheet(buttonStyle)
 
-        mainLayout.addWidget(restartButton)
+        restartButton.clicked.connect(self.restartClicked)
+        endButton.clicked.connect(self.endGame)
+
+        buttonLayout = QHBoxLayout()
+        buttonLayout.addWidget(restartButton)
+        buttonLayout.addWidget(endButton)
+
+        mainLayout.addLayout(buttonLayout)
 
         self.setLayout(mainLayout)
 
@@ -301,9 +333,14 @@ class MainWindow(QWidget):
 
             button.setFixedSize(60, 60)
 
-            button.setStyleSheet(
-                "background-color: white;"
-            )
+            button.setStyleSheet("""
+                QPushButton {
+                    background-color: white;
+                }
+                QPushButton:hover {
+                    background-color: #6D6664;
+                }
+            """)
 
             button.clicked.connect(
                 lambda checked, index=i:
@@ -319,13 +356,15 @@ class MainWindow(QWidget):
 
     def updateScores(self):
         self.scoreboardLabel.setText(
-            f"Player: {self.game.playerScore} | AI: {self.game.aiScore}"
+            f"Player:  {self.game.playerScore}   |   AI:  {self.game.aiScore}"
         )
 
     def updateTurnDisplay(self):
         self.turnLabel.setText(
             f"{self.game.currentTurn} Turn"
         )
+    def endGame(self):
+        self.game.endGame()
 
     def restartClicked(self):
         self.game.restartGame()
